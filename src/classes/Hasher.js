@@ -29,22 +29,11 @@ const DERIVE_KEY_CONTEXT = intu32(1 << 5);
 const DERIVE_KEY_MATERIAL = intu32(1 << 6);
 const CHUNK_LEN = 1024;
 
-/*
-    left_child_cv: [u32; 8],
-    right_child_cv: [u32; 8],
-    key: [u32; 8],
-    flags: u32
-	returns u32, length 8
-*/
 function parent_cv(left_child_cv, right_child_cv, key, flags) {
 	const parentOutput = parent_output(left_child_cv, right_child_cv, key, flags);
 	return parentOutput.chaining_value();
 }
 
-/* left_child_cv: [u32; 8],
-right_child_cv: [u32; 8],
-key: [u32; 8],
-flags: u32,*/
 function parent_output(left_child_cv, right_child_cv, key, flags) {
 	let block_words = [...left_child_cv.slice(0, 8), ...right_child_cv.slice(0, 8)];
 
@@ -88,8 +77,7 @@ export default class Hasher {
 		const keyWords = words_from_little_endian_bytes(key);
 		return new Hasher(keyWords, KEYED_HASH);
 	}
-
-	//context: &str
+	
 	static newDeriveKey(context) {
 		const contextHasher = new Hasher(IV, DERIVE_KEY_CONTEXT);
 		contextHasher.update(context);
@@ -97,8 +85,7 @@ export default class Hasher {
 		const keyWords = words_from_little_endian_bytes(key);
 		return new Hasher(keyWords, DERIVE_KEY_MATERIAL);
 	}
-
-	//cv: [u32; 8]
+	
 	pushStack(cv) {
 		this.cv_stack[this.cv_stack_len] = cv;
 		this.cv_stack_len += 1;
@@ -109,10 +96,6 @@ export default class Hasher {
 		return this.cv_stack[this.cv_stack_len];
 	}
 
-	/*
-		new_cv: [u32; 8] 
-		total_chunks: u64
-	*/
 	addChunkChainingValue(newCV, totalChunks) {
 		while (u64int(totalChunks) % 2 == 0) {
 			newCV = parent_cv(this.popStack(), newCV, this.key, this.flags);
@@ -122,9 +105,6 @@ export default class Hasher {
 		return totalChunks;
 	}
 
-	/*
-		input &[u8]
-	*/
 	update(input) {
 		if (typeof input == "string") {
 			input = keyFromString(input);
@@ -156,9 +136,6 @@ export default class Hasher {
 	}
 
 	finalize(outputLength = 32, outputFormat = "hex") {
-		// Starting with the Output from the current chunk, compute all the
-		// parent chaining values along the right edge of the tree, until we
-		// have the root Output.
 		let output = this.chunk_state.output();
 
 		let parent_nodes_remaining = this.cv_stack_len;
